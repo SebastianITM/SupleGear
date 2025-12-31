@@ -1,0 +1,573 @@
+"""
+API ENDPOINTS REFERENCE - SupleGear Backend
+==========================================
+
+Referencia rápida de todos los endpoints disponibles.
+Base URL: http://localhost:8000/api/v1
+"""
+
+# ==========================================
+# ✅ AUTENTICACIÓN
+# ==========================================
+
+# LOGIN - Obtener tokens JWT
+POST /auth/login
+Headers: Content-Type: application/json
+Body:
+{
+  "email": "user@example.com",
+  "password": "SecurePass123"
+}
+Response 200:
+{
+  "access_token": "eyJhbGc...",
+  "refresh_token": "eyJhbGc...",
+  "token_type": "bearer"
+}
+
+
+# REFRESH TOKEN - Renovar access token
+POST /auth/refresh
+Headers: Content-Type: application/json
+Body:
+{
+  "refresh_token": "eyJhbGc..."
+}
+Response 200:
+{
+  "access_token": "eyJhbGc...",
+  "refresh_token": "eyJhbGc...",
+  "token_type": "bearer"
+}
+
+
+# ==========================================
+# 👥 USUARIOS
+# ==========================================
+
+# CREATE - Crear nuevo usuario
+POST /users
+Headers: Content-Type: application/json
+Body:
+{
+  "email": "newuser@example.com",
+  "username": "newuser",
+  "password": "SecurePass123",
+  "first_name": "Juan",
+  "last_name": "Pérez"
+}
+Response 201: UserResponse
+
+
+# GET - Obtener usuario por ID
+GET /users/{user_id}
+Headers: Authorization: Bearer {token}
+Response 200: UserResponse
+
+
+# UPDATE - Actualizar usuario
+PUT /users/{user_id}
+Headers:
+  Authorization: Bearer {token}
+  Content-Type: application/json
+Body:
+{
+  "email": "newemail@example.com",
+  "first_name": "Juan",
+  "last_name": "García"
+}
+Response 200: UserResponse
+
+
+# DELETE - Eliminar usuario (admin only)
+DELETE /users/{user_id}
+Headers: Authorization: Bearer {token}
+Response 204: No Content
+
+
+# SEARCH - Buscar usuarios (admin only)
+GET /users/search/results?q=juan&skip=0&limit=100
+Headers: Authorization: Bearer {token}
+Response 200: [UserResponse, ...]
+
+
+# ==========================================
+# 📦 PRODUCTOS
+# ==========================================
+
+# CREATE - Crear producto (vendor/admin only)
+POST /products
+Headers:
+  Authorization: Bearer {token}
+  Content-Type: application/json
+Body:
+{
+  "name": "Whey Protein 5KG",
+  "description": "High quality whey protein",
+  "price": 89.99,
+  "stock": 50,
+  "sku": "WHEY-5KG-001",
+  "category_id": 1
+}
+Response 201: ProductResponse
+
+
+# GET - Obtener producto por ID
+GET /products/{product_id}
+Response 200: ProductResponse
+
+
+# LIST - Listar productos activos (paginado)
+GET /products?skip=0&limit=20
+Response 200: [ProductResponse, ...]
+
+
+# SEARCH - Buscar productos
+GET /products/search/results?q=whey&skip=0&limit=20
+Response 200: [ProductResponse, ...]
+
+
+# UPDATE - Actualizar producto (vendor/admin only)
+PUT /products/{product_id}
+Headers:
+  Authorization: Bearer {token}
+  Content-Type: application/json
+Body:
+{
+  "price": 79.99,
+  "stock": 40,
+  "status": "active"
+}
+Response 200: ProductResponse
+
+
+# DELETE - Eliminar producto (admin only)
+DELETE /products/{product_id}
+Headers: Authorization: Bearer {token}
+Response 204: No Content
+
+
+# ==========================================
+# 📂 CATEGORÍAS
+# ==========================================
+
+# CREATE - Crear categoría (admin only)
+POST /categories
+Headers:
+  Authorization: Bearer {token}
+  Content-Type: application/json
+Body:
+{
+  "name": "Proteínas",
+  "description": "Proteínas en polvo",
+  "icon": "protein-icon"
+}
+Response 201: CategoryResponse
+
+
+# GET - Obtener categoría
+GET /categories/{category_id}
+Response 200: CategoryResponse
+
+
+# LIST - Listar categorías
+GET /categories?skip=0&limit=100
+Response 200: [CategoryResponse, ...]
+
+
+# UPDATE - Actualizar categoría (admin only)
+PUT /categories/{category_id}
+Headers:
+  Authorization: Bearer {token}
+  Content-Type: application/json
+Body:
+{
+  "name": "Proteínas Premium",
+  "description": "Proteínas de alta calidad"
+}
+Response 200: CategoryResponse
+
+
+# ==========================================
+# 🛒 ÓRDENES
+# ==========================================
+
+# CREATE - Crear orden
+POST /orders
+Headers:
+  Authorization: Bearer {token}
+  Content-Type: application/json
+Body:
+{
+  "items": [
+    {
+      "product_id": 1,
+      "quantity": 2
+    },
+    {
+      "product_id": 3,
+      "quantity": 1
+    }
+  ],
+  "shipping_address": "123 Main St, City, Country",
+  "coupon_code": "SAVE20"
+}
+Response 201: OrderResponse
+
+
+# GET - Obtener orden
+GET /orders/{order_id}
+Headers: Authorization: Bearer {token}
+Response 200: OrderDetailResponse
+
+
+# LIST - Mis órdenes
+GET /orders
+Headers: Authorization: Bearer {token}
+Query: skip=0&limit=20&status=pending
+Response 200: [OrderResponse, ...]
+
+
+# UPDATE - Actualizar orden
+PUT /orders/{order_id}
+Headers:
+  Authorization: Bearer {token}
+  Content-Type: application/json
+Body:
+{
+  "status": "confirmed"
+}
+Response 200: OrderResponse
+
+
+# ==========================================
+# 💳 PAGOS
+# ==========================================
+
+# PROCESS - Procesar pago
+POST /payments/process
+Headers:
+  Authorization: Bearer {token}
+  Content-Type: application/json
+Body:
+{
+  "order_id": 1,
+  "payment_method": "stripe",
+  "stripe_token": "tok_visa"
+}
+Response 200:
+{
+  "id": 1,
+  "order_id": 1,
+  "status": "completed",
+  "amount": 89.99
+}
+
+
+# GET - Ver estado de pago
+GET /payments/{payment_id}
+Headers: Authorization: Bearer {token}
+Response 200: PaymentResponse
+
+
+# WEBHOOK - Webhook de Stripe (sin autenticación)
+POST /payments/webhook
+Headers: X-Stripe-Signature: signature
+Body: Evento de Stripe
+Response 200: {status: "success"}
+
+
+# ==========================================
+# 🎟️ CUPONES
+# ==========================================
+
+# CREATE - Crear cupón (admin only)
+POST /coupons
+Headers:
+  Authorization: Bearer {token}
+  Content-Type: application/json
+Body:
+{
+  "code": "SAVE20",
+  "discount_percentage": 20,
+  "max_uses": 100,
+  "min_purchase_amount": 50,
+  "valid_from": "2024-01-01T00:00:00Z",
+  "valid_until": "2024-12-31T23:59:59Z"
+}
+Response 201: CouponResponse
+
+
+# VALIDATE - Validar cupón
+POST /coupons/validate
+Headers: Content-Type: application/json
+Body:
+{
+  "code": "SAVE20",
+  "purchase_amount": 100
+}
+Response 200:
+{
+  "valid": true,
+  "discount": 20,
+  "final_amount": 80
+}
+
+
+# LIST - Listar cupones activos
+GET /coupons?skip=0&limit=100
+Response 200: [CouponResponse, ...]
+
+
+# GET - Obtener cupón
+GET /coupons/{coupon_id}
+Response 200: CouponResponse
+
+
+# ==========================================
+# STATUS CODES
+# ==========================================
+
+200 OK              - Petición exitosa
+201 Created         - Recurso creado
+204 No Content      - Éxito sin contenido
+400 Bad Request     - Error en la petición
+401 Unauthorized    - Falta autenticación
+403 Forbidden       - Sin permisos
+404 Not Found       - Recurso no encontrado
+409 Conflict        - Conflicto (ej: SKU duplicado)
+500 Server Error    - Error interno del servidor
+
+
+# ==========================================
+# AUTENTICACIÓN
+# ==========================================
+
+# Para peticiones protegidas, incluir header:
+Authorization: Bearer {access_token}
+
+# Ejemplo:
+curl -X GET "http://localhost:8000/api/v1/users/1" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+
+# ==========================================
+# ROLES Y PERMISOS
+# ==========================================
+
+Admin:
+  - Crear/actualizar/eliminar usuarios
+  - Crear/actualizar/eliminar productos
+  - Crear/actualizar/eliminar categorías
+  - Crear cupones
+  - Ver todas las órdenes y pagos
+  - Cambiar estado de órdenes
+
+Vendor:
+  - Crear/actualizar/eliminar sus productos
+  - Ver sus órdenes
+  - Procesar pagos
+
+Customer:
+  - Ver su perfil
+  - Crear órdenes
+  - Ver sus órdenes
+  - Aplicar cupones
+
+
+# ==========================================
+# RESPUESTAS DE ERROR
+# ==========================================
+
+# Autenticación fallida
+400:
+{
+  "detail": "Invalid credentials"
+}
+
+# Token expirado
+401:
+{
+  "detail": "Invalid token"
+}
+
+# Acceso denegado
+403:
+{
+  "detail": "Access denied"
+}
+
+# Recurso no encontrado
+404:
+{
+  "detail": "User with ID 999 not found"
+}
+
+# SKU duplicado
+409:
+{
+  "detail": "Product with SKU WHEY-001 already exists"
+}
+
+# Validación fallida
+422:
+{
+  "detail": [
+    {
+      "loc": ["body", "price"],
+      "msg": "ensure this value is greater than 0",
+      "type": "value_error.number.not_gt"
+    }
+  ]
+}
+
+
+# ==========================================
+# EJEMPLOS COMPLETOS CON CURL
+# ==========================================
+
+# 1. Registrar usuario
+curl -X POST "http://localhost:8000/api/v1/users" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john@example.com",
+    "username": "johndoe",
+    "password": "SecurePass123",
+    "first_name": "John",
+    "last_name": "Doe"
+  }'
+
+
+# 2. Login
+TOKEN=$(curl -s -X POST "http://localhost:8000/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john@example.com",
+    "password": "SecurePass123"
+  }' | jq -r '.access_token')
+
+echo "Token: $TOKEN"
+
+
+# 3. Crear categoría (como admin)
+curl -X POST "http://localhost:8000/api/v1/categories" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Proteínas",
+    "description": "Proteínas en polvo"
+  }'
+
+
+# 4. Crear producto
+curl -X POST "http://localhost:8000/api/v1/products" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Whey Protein",
+    "price": 49.99,
+    "stock": 100,
+    "sku": "WHEY-001",
+    "category_id": 1
+  }'
+
+
+# 5. Listar productos
+curl -X GET "http://localhost:8000/api/v1/products"
+
+
+# ==========================================
+# DOCUMENTACIÓN INTERACTIVA
+# ==========================================
+
+Swagger UI:
+http://localhost:8000/api/v1/docs
+
+ReDoc:
+http://localhost:8000/api/v1/redoc
+
+Health Check:
+http://localhost:8000/health
+
+Root:
+http://localhost:8000/
+
+
+# ==========================================
+# RATE LIMITING
+# ==========================================
+
+Límites aplicados:
+- Login: 10 intentos por minuto
+- API general: Ilimitado (con plan PRO)
+- Búsqueda: 100 peticiones por minuto
+
+
+# ==========================================
+# VERSIONAMIENTO
+# ==========================================
+
+Versión actual: v1
+URL base: /api/v1
+
+Versiones futuras:
+/api/v2 - Cambios mayores
+/api/v3 - Cambios mayores
+
+
+# ==========================================
+# PAGINACIÓN
+# ==========================================
+
+Query parameters:
+- skip: Número de registros a saltar (default: 0)
+- limit: Número de registros por página (default: 20, max: 100)
+
+Ejemplo:
+GET /products?skip=20&limit=10
+
+Retorna:
+{
+  "data": [...],
+  "pagination": {
+    "skip": 20,
+    "limit": 10,
+    "total": 500,
+    "total_pages": 50
+  }
+}
+
+
+# ==========================================
+# FILTROS Y BÚSQUEDA
+# ==========================================
+
+Búsqueda:
+GET /products/search/results?q=whey
+
+Filtros:
+GET /orders?status=pending&skip=0&limit=20
+
+Ordenamiento (futuro):
+GET /products?sort=-price (descendente)
+GET /products?sort=price (ascendente)
+
+
+# ==========================================
+# WEBHOOKS
+# ==========================================
+
+Stripe webhook:
+POST /payments/webhook
+
+Debe incluir:
+- X-Stripe-Signature header (verificación)
+- Body: evento de Stripe
+
+Tipos de eventos:
+- payment_intent.succeeded
+- payment_intent.payment_failed
+- charge.refunded
+
+
+"""

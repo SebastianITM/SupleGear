@@ -1,0 +1,309 @@
+"""
+Alembic Initialization Guide for SupleGear Backend
+==================================================
+
+Este archivo explica cómo usar Alembic para migraciones de BD.
+"""
+
+# ==========================================
+# INICIALIZAR ALEMBIC
+# ==========================================
+
+# 1. Instalar Alembic (ya está en requirements.txt)
+pip install alembic==1.12.1
+
+# 2. Inicializar Alembic en el proyecto
+alembic init migrations
+
+# 3. Configurar alembic.ini
+# Editar: sqlalchemy.url = postgresql://user:pass@localhost/suplegear
+
+# 4. Configurar migrations/env.py
+# Importar Base y modelos:
+from app.infrastructure.database.database import Base
+from app.infrastructure.database import models_user, models_product, models_order, models_coupon
+
+# Configurar target_metadata:
+target_metadata = Base.metadata
+
+
+# ==========================================
+# WORKFLOWS COMUNES
+# ==========================================
+
+# 1. CREAR NUEVA MIGRACIÓN (autogenerada)
+# Cuando agregues nuevos modelos a models_*.py:
+alembic revision --autogenerate -m "Add reviews table"
+
+# 2. APLICAR MIGRACIONES
+# Ejecutar todas las migraciones pendientes:
+alembic upgrade head
+
+# 3. REVERTIR ÚLTIMA MIGRACIÓN
+alembic downgrade -1
+
+# 4. VER HISTORIAL DE MIGRACIONES
+alembic history --oneline
+
+# 5. VER VERSIÓN ACTUAL
+alembic current
+
+# 6. REVERTIR A VERSIÓN ESPECÍFICA
+alembic downgrade ae1027a6acf
+
+
+# ==========================================
+# ESTRUCTURA DE MIGRACIONES
+# ==========================================
+
+migrations/
+├── versions/              ← Archivos de migración
+│   ├── 001_initial_schema.py
+│   ├── 002_add_reviews_table.py
+│   └── ...
+├── env.py               ← Configuración entorno
+├── script.py.mako       ← Template migraciones
+└── README
+
+# Cada versión tiene dos funciones:
+# upgrade() - Aplicar cambios
+# downgrade() - Revertir cambios
+
+
+# ==========================================
+# CREAR MIGRACIÓN MANUAL
+# ==========================================
+
+# 1. Crear migración vacía
+alembic revision -m "Add product rating column"
+
+# 2. Editar migrations/versions/xxx_add_product_rating_column.py:
+
+from alembic import op
+import sqlalchemy as sa
+
+revision = 'abc123'
+down_revision = 'def456'
+branch_labels = None
+depends_on = None
+
+def upgrade() -> None:
+    # Agregar columna
+    op.add_column('products', sa.Column('rating', sa.Float(), nullable=True))
+
+def downgrade() -> None:
+    # Remover columna
+    op.drop_column('products', 'rating')
+
+# 3. Aplicar migración
+alembic upgrade head
+
+
+# ==========================================
+# EJEMPLOS DE OPERACIONES EN MIGRACIONES
+# ==========================================
+
+# CREAR TABLA
+def upgrade() -> None:
+    op.create_table(
+        'reviews',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('product_id', sa.Integer(), nullable=False),
+        sa.Column('user_id', sa.Integer(), nullable=False),
+        sa.Column('rating', sa.Integer(), nullable=False),
+        sa.Column('comment', sa.Text(), nullable=True),
+        sa.ForeignKeyConstraint(['product_id'], ['products.id']),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id']),
+        sa.PrimaryKeyConstraint('id')
+    )
+
+def downgrade() -> None:
+    op.drop_table('reviews')
+
+
+# AGREGAR COLUMNA
+def upgrade() -> None:
+    op.add_column('users', sa.Column('phone', sa.String(20), nullable=True))
+
+def downgrade() -> None:
+    op.drop_column('users', 'phone')
+
+
+# MODIFICAR COLUMNA
+def upgrade() -> None:
+    op.alter_column('products', 'price',
+        existing_type=sa.Numeric(10, 2),
+        type_=sa.Numeric(12, 2))
+
+def downgrade() -> None:
+    op.alter_column('products', 'price',
+        existing_type=sa.Numeric(12, 2),
+        type_=sa.Numeric(10, 2))
+
+
+# CREAR ÍNDICE
+def upgrade() -> None:
+    op.create_index('idx_product_sku', 'products', ['sku'])
+
+def downgrade() -> None:
+    op.drop_index('idx_product_sku')
+
+
+# AGREGAR RESTRICCIÓN ÚNICA
+def upgrade() -> None:
+    op.create_unique_constraint('uq_user_email', 'users', ['email'])
+
+def downgrade() -> None:
+    op.drop_constraint('uq_user_email', 'users', type_='unique')
+
+
+# INSERTAR DATOS
+def upgrade() -> None:
+    op.execute(
+        "INSERT INTO categories (name, description) VALUES ('Proteínas', 'Proteínas en polvo')"
+    )
+
+def downgrade() -> None:
+    op.execute("DELETE FROM categories WHERE name = 'Proteínas'")
+
+
+# ==========================================
+# MIGRACIONES AUTOGENERADAS
+# ==========================================
+
+# Después de modificar modelos, crear migración:
+alembic revision --autogenerate -m "Add columns to products"
+
+# Archivo generado automáticamente en versions/
+# ⚠️ REVISAR SIEMPRE el contenido antes de aplicar
+
+# Aplicar:
+alembic upgrade head
+
+
+# ==========================================
+# BEST PRACTICES
+# ==========================================
+
+# 1. Crear migración para cada cambio importante
+# 2. Escribir buenos mensajes de descripción
+# 3. Probar upgrades y downgrades localmente
+# 4. Revisar cambios SQL antes de aplicar
+# 5. Usar autogenerate solo como referencia
+# 6. Versionar migrations/ en git
+# 7. No editar migraciones ya aplicadas
+
+# 8. Template para buena migración:
+"""
+\"\"\"Add status column to orders table\"\"\"
+
+from alembic import op
+import sqlalchemy as sa
+
+# Define versiones
+revision = 'a1b2c3d4'
+down_revision = 'e5f6g7h8'
+branch_labels = None
+depends_on = None
+
+def upgrade() -> None:
+    \"\"\"Agregar columna status a tabla orders\"\"\"
+    op.add_column(
+        'orders',
+        sa.Column('status', sa.Enum('pending', 'confirmed', name='orderstatus'), default='pending')
+    )
+
+def downgrade() -> None:
+    \"\"\"Remover columna status de tabla orders\"\"\"
+    op.drop_column('orders', 'status')
+"""
+
+
+# ==========================================
+# TROUBLESHOOTING
+# ==========================================
+
+# Error: "Can't find sqlalchemy"
+pip install sqlalchemy==2.0.23
+
+# Error: "Can't connect to database"
+# Verificar DATABASE_URL en alembic.ini
+# Verificar que PostgreSQL esté corriendo
+
+# Migración incompleta / corrupción de versiones
+alembic stamp head  # Forzar versión actual
+
+# Ver diferencias entre código y BD:
+alembic upgrade --sql head  # Ver SQL que se ejecutaría
+
+# Limpiar todo y reiniciar:
+alembic downgrade base
+alembic upgrade head
+
+
+# ==========================================
+# INTEGRACIÓN CON DOCKER
+# ==========================================
+
+# En Dockerfile, ejecutar migraciones antes de iniciar app:
+FROM python:3.11
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+
+# Ejecutar migraciones
+RUN alembic upgrade head
+
+# Iniciar app
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0"]
+
+
+# En docker-compose.yml:
+services:
+  backend:
+    build: .
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0"
+    # ...
+
+
+# ==========================================
+# FLUJO DE DESARROLLO TÍPICO
+# ==========================================
+
+# 1. Modificar modelo
+# File: app/infrastructure/database/models_product.py
+class Product(Base):
+    # ... campos existentes
+    rating = Column(Float, nullable=True)  # ← NUEVO
+
+# 2. Crear migración
+alembic revision --autogenerate -m "Add rating to products"
+
+# 3. Revisar migración
+cat migrations/versions/xxx_add_rating_to_products.py
+
+# 4. Aplicar migración localmente
+alembic upgrade head
+
+# 5. Testear
+pytest tests/
+
+# 6. Commitear cambios
+git add app/infrastructure/database/models_product.py
+git add migrations/versions/xxx_add_rating_to_products.py
+git commit -m "Add product rating feature"
+
+# 7. En producción
+alembic upgrade head  # Se ejecuta automáticamente en deploy
+
+
+# ==========================================
+# RECURSOS
+# ==========================================
+
+# Documentación Alembic: https://alembic.sqlalchemy.org/
+# Alembic Operations: https://alembic.sqlalchemy.org/en/latest/ops.html
+# SQLAlchemy Types: https://docs.sqlalchemy.org/en/20/core/types.html
+
+"""

@@ -1,0 +1,250 @@
+"""
+ESTRUCTURA VISUAL DE SUPLEGEAR BACKEND
+======================================
+
+Esta es una referencia rápida de la estructura del proyecto.
+Para detalles completos, ver README.md
+
+┌─ CLEAN ARCHITECTURE ─────────────────────────────────────┐
+│                                                            │
+│  API LAYER (endpoints)                                     │
+│  ↓                                                         │
+│  APPLICATION LAYER (use cases)                             │
+│  ↓                                                         │
+│  DOMAIN LAYER (entities & business rules)                  │
+│  ↓                                                         │
+│  INFRASTRUCTURE LAYER (db, repositories, services)         │
+│                                                            │
+└────────────────────────────────────────────────────────────┘
+
+backend/
+│
+├── 📁 app/                          [APLICACIÓN PRINCIPAL]
+│   ├── main.py                      Factory FastAPI
+│   │
+│   ├── 📁 core/                     [CONFIGURACIÓN GLOBAL]
+│   │   ├── config.py                Settings (env vars)
+│   │   ├── security.py              JWT, passwords
+│   │   └── constants.py             Enums y constantes
+│   │
+│   ├── 📁 domain/                   [LÓGICA DE NEGOCIO PURA]
+│   │   ├── 📁 users/
+│   │   ├── 📁 products/
+│   │   ├── 📁 categories/
+│   │   ├── 📁 orders/
+│   │   ├── 📁 coupons/
+│   │   ├── 📁 payments/
+│   │   └── 📁 roles/
+│   │   └── [entities.py]            Reglas de negocio
+│   │
+│   ├── 📁 application/              [CASOS DE USO]
+│   │   ├── 📁 users/                CreateUserUseCase, etc
+│   │   ├── 📁 products/             CreateProductUseCase, etc
+│   │   ├── 📁 auth/                 LoginUseCase, RefreshTokenUseCase
+│   │   ├── 📁 categories/
+│   │   ├── 📁 orders/
+│   │   ├── 📁 coupons/
+│   │   ├── 📁 payments/
+│   │   └── 📁 roles/
+│   │   └── [*_use_case.py]          Orquestación de lógica
+│   │
+│   ├── 📁 infrastructure/           [IMPLEMENTACIÓN TÉCNICA]
+│   │   ├── 📁 database/
+│   │   │   ├── database.py          Engine, SessionLocal, Base
+│   │   │   ├── models_user.py       ORM User
+│   │   │   ├── models_product.py    ORM Product
+│   │   │   ├── models_order.py      ORM Order, Payment
+│   │   │   └── models_coupon.py     ORM Coupon
+│   │   │
+│   │   ├── 📁 repositories/         [PATRÓN REPOSITORY]
+│   │   │   ├── base_repository.py   CRUD genérico
+│   │   │   ├── user_repository.py   get_by_email(), search()
+│   │   │   ├── product_repository.py get_by_sku(), search()
+│   │   │   ├── order_repository.py   get_by_user()
+│   │   │   └── coupon_repository.py  validate_coupon()
+│   │   │
+│   │   ├── 📁 services/
+│   │   │   ├── email_service.py      Envío de emails
+│   │   │   ├── sms_service.py        Envío de SMS
+│   │   │   └── notification_service.py Notificaciones
+│   │   │
+│   │   └── 📁 external/
+│   │       ├── stripe_service.py     Integración Stripe
+│   │       ├── paypal_service.py     Integración PayPal
+│   │       └── twilio_service.py     Integración Twilio
+│   │
+│   ├── 📁 api/                      [CAPA HTTP]
+│   │   └── 📁 v1/
+│   │       ├── router.py            Router principal v1
+│   │       ├── dependencies.py       JWT, roles (get_current_user)
+│   │       │
+│   │       └── 📁 endpoints/        [RUTAS HTTP]
+│   │           ├── auth.py          POST /auth/login
+│   │           ├── users.py         CRUD /users
+│   │           ├── products.py      CRUD /products
+│   │           ├── categories.py    CRUD /categories
+│   │           ├── orders.py        CRUD /orders
+│   │           ├── coupons.py       CRUD /coupons
+│   │           └── payments.py      CRUD /payments
+│   │
+│   ├── 📁 schemas/                  [DTOs / PYDANTIC]
+│   │   ├── user_schemas.py          UserCreate, UserResponse
+│   │   ├── product_schemas.py       ProductCreate, ProductResponse
+│   │   ├── auth_schemas.py          TokenRequest, TokenResponse
+│   │   └── common_schemas.py        Schemas compartidos
+│   │
+│   └── 📁 utils/                    [UTILIDADES]
+│       ├── helpers.py               Funciones auxiliares
+│       ├── exceptions.py            Excepciones personalizadas
+│       └── validators.py            Validadores comunes
+│
+├── 📁 tests/                        [PRUEBAS]
+│   ├── 📁 unit/
+│   │   ├── test_products.py
+│   │   ├── test_users.py
+│   │   └── test_auth.py
+│   │
+│   └── 📁 integration/
+│       ├── test_product_flow.py
+│       └── test_order_flow.py
+│
+├── 📄 main.py                       PUNTO DE ENTRADA
+├── 📄 requirements.txt              Dependencias Python
+├── 📄 Dockerfile                    Contenedorización
+├── 📄 docker-compose.yml            Orquestación servicios
+├── 📄 .env.example                  Variables de entorno (plantilla)
+├── 📄 .env                          Variables (⚠️ NO en git)
+├── 📄 .gitignore
+├── 📄 conftest.py                   Config pytest
+├── 📄 pyproject.toml                Config Black
+└── 📄 README.md                     DOCUMENTACIÓN
+
+─────────────────────────────────────────────────────────────
+
+📌 REGLAS DE ARQUITECTURA:
+
+1. API LAYER NO puede importar directamente de INFRASTRUCTURE
+   ✅ API → APPLICATION → INFRASTRUCTURE
+   ❌ API → INFRASTRUCTURE
+
+2. DOMAIN debe ser independiente de todo
+   ✅ DOMAIN = Lógica pura sin dependencias externas
+   ❌ DOMAIN no puede importar de INFRASTRUCTURE
+
+3. APPLICATION orquesta entre DOMAIN e INFRASTRUCTURE
+   ✅ USE CASES = Logica + Repositories
+   ❌ USE CASES no implementan detalles DB
+
+4. INFRASTRUCTURE abstrae detalles técnicos
+   ✅ Repository pattern, queries SQL ocultas
+   ❌ SQL raw en endpoints
+
+─────────────────────────────────────────────────────────────
+
+📊 FLUJO DE PETICIÓN EJEMPLO (POST /products):
+
+Cliente HTTP
+    ↓
+FastAPI Router (api/v1/endpoints/products.py)
+    ├─ Validación JWT (dependencies.get_current_vendor)
+    ├─ Validación schema Pydantic (ProductCreate)
+    ↓
+CreateProductUseCase (application/products/)
+    ├─ Lógica de negocio
+    ├─ Validaciones complejas
+    ├─ Orquestación
+    ↓
+ProductRepository (infrastructure/repositories/)
+    ├─ Queries SQL
+    ├─ Manejo BD
+    ↓
+SQLAlchemy ORM (Product model)
+    ↓
+PostgreSQL Database
+    ↓ (Retornar)
+ProductResponse (schema Pydantic)
+    ↓
+Cliente HTTP (JSON)
+
+─────────────────────────────────────────────────────────────
+
+🔑 MÓDULOS DEL E-COMMERCE:
+
+┌─ USUARIOS ─────────────────────┐
+│ domain/users/entities.py       │
+│ application/users/*.py         │
+│ infrastructure/repositories/   │
+│ /user_repository.py           │
+│ api/v1/endpoints/users.py     │
+└────────────────────────────────┘
+
+┌─ AUTENTICACIÓN ────────────────┐
+│ application/auth/login.py      │
+│ core/security.py (JWT)        │
+│ api/v1/dependencies.py         │
+│ api/v1/endpoints/auth.py      │
+└────────────────────────────────┘
+
+┌─ PRODUCTOS ────────────────────┐
+│ domain/products/entities.py    │
+│ application/products/*.py      │
+│ infrastructure/repositories/   │
+│ /product_repository.py        │
+│ api/v1/endpoints/products.py  │
+└────────────────────────────────┘
+
+┌─ ÓRDENES ──────────────────────┐
+│ domain/orders/entities.py      │
+│ application/orders/*.py        │
+│ infrastructure/repositories/   │
+│ /order_repository.py          │
+│ api/v1/endpoints/orders.py    │
+└────────────────────────────────┘
+
+[Similar para: CATEGORÍAS, CUPONES, PAGOS, ROLES]
+
+─────────────────────────────────────────────────────────────
+
+✨ CARACTERÍSTICAS:
+
+✅ Clean Architecture (4 capas bien definidas)
+✅ SOLID Principles
+✅ Repository Pattern
+✅ inyección de Dependencias
+✅ JWT Authentication
+✅ Role-Based Access Control (RBAC)
+✅ Pydantic v2 Validation
+✅ Swagger Documentation
+✅ Docker Support
+✅ PostgreSQL + SQLAlchemy ORM
+✅ Custom Exceptions
+✅ Logging
+✅ Unit & Integration Tests
+✅ Versioning (API v1)
+✅ Soft Delete Support
+✅ Audit Trails (created_at, updated_at)
+
+─────────────────────────────────────────────────────────────
+
+🚀 PARA EMPEZAR:
+
+1. cd backend
+2. pip install -r requirements.txt
+3. cp .env.example .env
+4. python main.py
+5. Visitar: http://localhost:8000/api/v1/docs
+
+🐳 O CON DOCKER:
+
+1. docker-compose up -d
+2. Visitar: http://localhost:8000/api/v1/docs
+
+─────────────────────────────────────────────────────────────
+
+📚 VER TAMBIÉN:
+
+README.md - Documentación completa
+app/main.py - Factory FastAPI
+app/core/config.py - Configuración
+app/infrastructure/repositories/base_repository.py - CRUD base
+"""

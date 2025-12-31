@@ -1,0 +1,367 @@
+"""
+QUICK START GUIDE - SupleGear Backend
+====================================
+
+Comenzar a desarrollar en 5 minutos
+"""
+
+# ==========================================
+# 1️⃣ INSTALACIÓN LOCAL (sin Docker)
+# ==========================================
+
+# Requisitos:
+# - Python 3.11+
+# - PostgreSQL 13+
+# - Git
+
+# Pasos:
+
+# A. Clonar repo
+git clone <repository-url>
+cd backend
+
+# B. Crear entorno virtual
+python -m venv venv
+source venv/bin/activate  # En Windows: venv\Scripts\activate
+
+# C. Instalar dependencias
+pip install -r requirements.txt
+
+# D. Configurar .env
+cp .env.example .env
+# Editar .env y cambiar DATABASE_URL
+
+# E. Crear base de datos
+createdb -U postgres suplegear
+
+# F. Ejecutar servidor
+python main.py
+
+# ✅ Accesible en: http://localhost:8000/api/v1/docs
+
+
+# ==========================================
+# 2️⃣ INSTALACIÓN CON DOCKER (recomendado)
+# ==========================================
+
+docker-compose up -d
+
+# Esperar a que PostgreSQL esté listo (~10s)
+# ✅ Accesible en: http://localhost:8000/api/v1/docs
+
+
+# ==========================================
+# 3️⃣ PRIMERAS PETICIONES
+# ==========================================
+
+# A. Crear usuario
+curl -X POST "http://localhost:8000/api/v1/users" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "username": "testuser",
+    "password": "SecurePass123",
+    "first_name": "Juan",
+    "last_name": "Pérez"
+  }'
+
+# Respuesta esperada:
+# {
+#   "id": 1,
+#   "email": "user@example.com",
+#   "username": "testuser",
+#   "first_name": "Juan",
+#   "last_name": "Pérez",
+#   "role": "customer",
+#   "is_active": true,
+#   "created_at": "2024-01-15T10:00:00Z",
+#   "updated_at": "2024-01-15T10:00:00Z"
+# }
+
+
+# B. Login
+curl -X POST "http://localhost:8000/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "SecurePass123"
+  }'
+
+# Respuesta:
+# {
+#   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+#   "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+#   "token_type": "bearer"
+# }
+
+# ⚠️ Guardar access_token para peticiones posteriores
+
+
+# C. Crear categoría (como admin - requiere token)
+# PRIMERO: Cambiar rol del usuario a admin en la BD:
+# UPDATE users SET role = 'admin' WHERE id = 1;
+
+curl -X POST "http://localhost:8000/api/v1/categories" \
+  -H "Authorization: Bearer {access_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Proteínas",
+    "description": "Suplementos de proteína"
+  }'
+
+
+# D. Crear producto
+curl -X POST "http://localhost:8000/api/v1/products" \
+  -H "Authorization: Bearer {access_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Whey Protein 5KG",
+    "description": "Proteína de suero de alta calidad",
+    "price": 89.99,
+    "stock": 50,
+    "sku": "WHEY-5KG-001",
+    "category_id": 1
+  }'
+
+
+# E. Listar productos (público, sin token)
+curl -X GET "http://localhost:8000/api/v1/products"
+
+
+# F. Buscar productos
+curl -X GET "http://localhost:8000/api/v1/products/search?q=whey"
+
+
+# ==========================================
+# 4️⃣ ESTRUCTURA DE CARPETAS RÁPIDA
+# ==========================================
+
+backend/
+├── app/
+│   ├── core/           ← Config, JWT, constantes
+│   ├── domain/         ← Lógica de negocio pura
+│   ├── application/    ← Casos de uso
+│   ├── infrastructure/ ← BD, repositorios, servicios
+│   ├── api/v1/         ← Endpoints HTTP
+│   ├── schemas/        ← DTOs (Pydantic)
+│   ├── utils/          ← Helpers, excepciones
+│   └── main.py         ← Factory FastAPI
+├── tests/              ← Tests unitarios e integración
+├── requirements.txt    ← Dependencias
+├── .env.example        ← Variables de entorno
+├── Dockerfile
+├── docker-compose.yml
+└── README.md
+
+
+# ==========================================
+# 5️⃣ AGREGAR NUEVO MÓDULO (Ej: Reviews)
+# ==========================================
+
+# 1. Crear estructura
+mkdir -p app/domain/reviews app/application/reviews
+
+# 2. Crear archivos en este orden:
+#    a) app/domain/reviews/entities.py         (Reglas de negocio)
+#    b) app/infrastructure/database/models_review.py  (ORM)
+#    c) app/schemas/review_schemas.py          (DTOs)
+#    d) app/infrastructure/repositories/review_repository.py (CRUD)
+#    e) app/application/reviews/*.py           (Use cases)
+#    f) app/api/v1/endpoints/reviews.py        (Endpoints)
+
+# 3. Incluir en main.py:
+from app.api.v1.endpoints import reviews
+app.include_router(reviews.router, prefix=settings.API_V1_STR)
+
+
+# ==========================================
+# 6️⃣ COMANDOS ÚTILES
+# ==========================================
+
+# Ver logs
+docker-compose logs -f backend
+
+# Ejecutar tests
+pytest tests/unit -v
+
+# Ejecutar tests con cobertura
+pytest --cov=app tests/
+
+# Limpiar caché
+find . -type d -name __pycache__ -exec rm -r {} +
+find . -type f -name "*.pyc" -delete
+
+# Acceder a BD PostgreSQL
+psql -U suplegear_user -d suplegear
+
+# Reiniciar servicios
+docker-compose restart
+
+# Detener servicios
+docker-compose down
+
+# Reconstruir imagen Docker
+docker-compose build --no-cache
+
+
+# ==========================================
+# 7️⃣ CREAR UN ENDPOINT SIMPLE
+# ==========================================
+
+# Paso a paso:
+
+# 1. Crear schema (DTOs)
+# app/schemas/review_schemas.py
+class ReviewCreate(BaseModel):
+    product_id: int
+    rating: int = Field(1, ge=1, le=5)
+    comment: str
+
+class ReviewResponse(ReviewCreate):
+    id: int
+    created_at: datetime
+
+
+# 2. Crear repository
+# app/infrastructure/repositories/review_repository.py
+class ReviewRepository(BaseRepository):
+    def get_by_product(self, product_id: int):
+        return self.db.query(self.model)\
+            .filter(Review.product_id == product_id).all()
+
+
+# 3. Crear use case
+# app/application/reviews/create_review.py
+class CreateReviewUseCase:
+    def execute(self, review_data: ReviewCreate, user_id: int):
+        product = self.product_repo.get_by_id(review_data.product_id)
+        if not product:
+            raise ValueError("Product not found")
+        
+        review = self.repository.create({
+            **review_data.dict(),
+            "user_id": user_id
+        })
+        return ReviewResponse.from_orm(review)
+
+
+# 4. Crear endpoint
+# app/api/v1/endpoints/reviews.py
+router = APIRouter(prefix="/reviews", tags=["Reviews"])
+
+@router.post("/", response_model=ReviewResponse)
+async def create_review(
+    review: ReviewCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    use_case = CreateReviewUseCase(db)
+    return use_case.execute(review, current_user["user_id"])
+
+# 5. Incluir en main.py
+from app.api.v1.endpoints import reviews
+app.include_router(reviews.router, prefix=settings.API_V1_STR)
+
+
+# ==========================================
+# 8️⃣ TESTING
+# ==========================================
+
+# Archivo test básico:
+# tests/unit/test_reviews.py
+
+def test_create_review_success(db_session):
+    review_data = ReviewCreate(
+        product_id=1,
+        rating=5,
+        comment="Great product!"
+    )
+    use_case = CreateReviewUseCase(db_session)
+    result = use_case.execute(review_data, user_id=1)
+    
+    assert result.rating == 5
+    assert result.comment == "Great product!"
+
+# Ejecutar:
+pytest tests/unit/test_reviews.py::test_create_review_success -v
+
+
+# ==========================================
+# 9️⃣ DEBUGGING
+# ==========================================
+
+# Agregar logging a un use case:
+import logging
+
+logger = logging.getLogger(__name__)
+
+class CreateProductUseCase:
+    def execute(self, product_data):
+        logger.info(f"Creating product: {product_data.name}")
+        try:
+            result = self.repository.create(product_data)
+            logger.info(f"Product created: {result.id}")
+            return result
+        except Exception as e:
+            logger.error(f"Failed: {str(e)}")
+            raise
+
+# Ver logs en Docker:
+docker-compose logs -f backend | grep "Creating product"
+
+
+# ==========================================
+# 🔟 BUENAS PRÁCTICAS
+# ==========================================
+
+# 1. Mantener use cases simples y enfocados
+# 2. Usar inyección de dependencias siempre
+# 3. No hardcodear valores en código
+# 4. Validar entrada + output
+# 5. Usar constantes para valores recurrentes
+# 6. Documentar casos complejos
+# 7. Escribir tests antes de producción
+# 8. Separar lógica de presentación
+# 9. Versionar la API (v1, v2)
+# 10. Revisar documentación en README.md
+
+
+# ==========================================
+# 📞 TROUBLESHOOTING
+# ==========================================
+
+# Error: "Database connection failed"
+# → Verificar que PostgreSQL esté corriendo
+# → Revisar DATABASE_URL en .env
+# → docker-compose logs db
+
+# Error: "JWT token expired"
+# → Generar nuevo token: POST /auth/login
+# → O usar refresh token: POST /auth/refresh
+
+# Error: "Access denied"
+# → Verificar rol del usuario
+# → UPDATE users SET role = 'admin' WHERE id = 1
+
+# Error: "Module not found"
+# → pip install -r requirements.txt
+# → source venv/bin/activate
+
+# Port 8000 already in use
+# → lsof -i :8000  # Ver qué está usando el puerto
+# → kill -9 <PID>  # Matar proceso
+
+
+# ==========================================
+# 📚 RECURSOS
+# ==========================================
+
+# Documentación: README.md
+# Estructura: STRUCTURE.txt
+# API Docs: http://localhost:8000/api/v1/docs (Swagger)
+# FastAPI: https://fastapi.tiangolo.com/
+# SQLAlchemy: https://docs.sqlalchemy.org/
+# Pydantic: https://docs.pydantic.dev/
+# JWT: https://jwt.io/
+
+"""

@@ -1,0 +1,1 @@
+"""Coupons use cases"""
